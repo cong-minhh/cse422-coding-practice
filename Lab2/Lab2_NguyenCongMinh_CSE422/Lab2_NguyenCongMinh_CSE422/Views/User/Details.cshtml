@@ -1,0 +1,95 @@
+@model Lab2_NguyenCongMinh_CSE422.Models.ViewModels.UserDetailsViewModel
+
+@{
+    ViewData["Title"] = "User Details";
+}
+
+<div class="container py-4">
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header bg-white">
+                    <h3 class="card-title mb-0">User Information</h3>
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-4">
+                        <i class="fas fa-user-circle fa-5x text-primary"></i>
+                    </div>
+                    <dl class="row">
+                        <dt class="col-sm-4">@Html.DisplayNameFor(model => model.User.FullName)</dt>
+                        <dd class="col-sm-8">@Html.DisplayFor(model => model.User.FullName)</dd>
+
+                        <dt class="col-sm-4">@Html.DisplayNameFor(model => model.User.Email)</dt>
+                        <dd class="col-sm-8">@Html.DisplayFor(model => model.User.Email)</dd>
+
+                        <dt class="col-sm-4">@Html.DisplayNameFor(model => model.User.PhoneNumber)</dt>
+                        <dd class="col-sm-8">@Html.DisplayFor(model => model.User.PhoneNumber)</dd>
+                    </dl>
+                    <div class="text-center mt-4">
+                        <a asp-action="Edit" asp-route-id="@Model.User.Id" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit
+                        </a>
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h3 class="card-title mb-0">Assigned Devices</h3>
+                </div>
+                <div class="card-body">
+                    @if (Model.AssignedDevices != null && Model.AssignedDevices.Any())
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Code</th>
+                                        <th>Category</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var device in Model.AssignedDevices)
+                                    {
+                                        <tr>
+                                            <td>@device.Name</td>
+                                            <td>@device.Code</td>
+                                            <td>@device.Category?.Name</td>
+                                            <td>
+                                                <span class="badge @(device.Status == DeviceStatus.InUse ? "bg-success" : 
+                                                                   device.Status == DeviceStatus.Broken ? "bg-danger" : "bg-warning")">
+                                                    @device.Status
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <a asp-controller="Device" asp-action="Details" asp-route-id="@device.Id" 
+                                                   class="btn btn-sm btn-outline-info">
+                                                    <i class="fas fa-info-circle"></i>
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-4">
+                            <i class="fas fa-laptop fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No devices assigned to this user.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

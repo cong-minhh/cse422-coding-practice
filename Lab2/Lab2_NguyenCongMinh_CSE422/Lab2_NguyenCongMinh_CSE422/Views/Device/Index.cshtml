@@ -1,0 +1,86 @@
+@model Lab2_NguyenCongMinh_CSE422.Models.ViewModels.DeviceFilterViewModel
+@{
+    ViewData["Title"] = "Devices";
+    var devices = (IEnumerable<Device>)ViewBag.Devices;
+}
+
+<div class="container">
+    <h1>Device Management</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <form asp-action="Index" method="get" class="form-inline">
+                <div class="input-group mb-2 mr-sm-2">
+                    <input asp-for="SearchTerm" class="form-control" placeholder="Search by name or code..."/>
+                </div>
+
+                <div class="input-group mb-2 mr-sm-2">
+                    <select asp-for="CategoryId" class="form-control">
+                        <option value="">All Categories</option>
+                        @foreach (var category in Model.Categories)
+                        {
+                            <option value="@category.Id">@category.Name</option>
+                        }
+                    </select>
+                </div>
+
+                <div class="input-group mb-2 mr-sm-2">
+                    <select asp-for="Status" class="form-control">
+                        <option value="">All Statuses</option>
+                        @foreach (var status in Enum.GetValues(typeof(DeviceStatus)))
+                        {
+                            <option value="@status">@status</option>
+                        }
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary mb-2">Filter</button>
+                <a asp-action="Create" class="btn btn-success mb-2 ml-2">Create New</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Category</th>
+                    <th>Status</th>
+                    <th>Date of Entry</th>
+                    <th>Assigned User</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var device in devices)
+                {
+                    <tr>
+                        <td>@device.Name</td>
+                        <td>@device.Code</td>
+                        <td>@device.Category?.Name</td>
+                        <td>@device.Status</td>
+                        <td>@device.DateOfEntry.ToShortDateString()</td>
+                        <td>@(device.User?.FullName ?? "Not Assigned")</td>
+                        <td>
+                            <div class="btn-group">
+                                <a asp-action="Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
+                                <a asp-action="Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
+                                <a asp-action="Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
+                            </div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            // Add any client-side functionality here
+        });
+    </script>
+}
