@@ -15,21 +15,21 @@ namespace Lab2_NguyenCongMinh_CSE422.Models.Repositories
 
         public override async Task<IEnumerable<User>> GetAllAsync()
         {
-            return await _context.User
+            return await _context.Users
                 .Include(u => u.Devices)
                 .ToListAsync();
         }
 
         public override async Task<User> GetByIdAsync(int id)
         {
-            return await _context.User
+            return await _context.Users
                 .Include(u => u.Devices)
                 .FirstOrDefaultAsync(u => u.Id == id);
         }
 
         public override async Task<IEnumerable<User>> FindAsync(Expression<Func<User, bool>> predicate)
         {
-            return await _context.User
+            return await _context.Users
                 .Include(u => u.Devices)
                 .Where(predicate)
                 .ToListAsync();
@@ -37,14 +37,14 @@ namespace Lab2_NguyenCongMinh_CSE422.Models.Repositories
 
         public override async Task AddAsync(User entity)
         {
-            await _context.User.AddAsync(entity);
+            await _context.Users.AddAsync(entity);
         }
 
         public override void Update(User entity)
         {
             if (_context.Entry(entity).State == EntityState.Detached)
             {
-                _context.User.Attach(entity);
+                _context.Users.Attach(entity);
             }
             _context.Entry(entity).State = EntityState.Modified;
         }
@@ -53,9 +53,9 @@ namespace Lab2_NguyenCongMinh_CSE422.Models.Repositories
         {
             if (_context.Entry(entity).State == EntityState.Detached)
             {
-                _context.User.Attach(entity);
+                _context.Users.Attach(entity);
             }
-            _context.User.Remove(entity);
+            _context.Users.Remove(entity);
         }
     }
 }

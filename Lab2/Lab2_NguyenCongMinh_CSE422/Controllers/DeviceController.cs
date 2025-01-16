@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Mvc.Rendering;
 using Lab2_NguyenCongMinh_CSE422.Models;
 using Lab2_NguyenCongMinh_CSE422.Models.Interfaces;
 using Lab2_NguyenCongMinh_CSE422.Models.ViewModels;
+using Lab2_NguyenCongMinh_CSE422.Models.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace Lab2_NguyenCongMinh_CSE422.Controllers
 {
@@ -11,15 +13,18 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         private readonly IDeviceRepository _deviceRepository;
         private readonly IRepository<DeviceCategory> _categoryRepository;
         private readonly IRepository<User> _userRepository;
+        private readonly ILogger<DeviceController> _logger;
 
         public DeviceController(
             IDeviceRepository deviceRepository,
             IRepository<DeviceCategory> categoryRepository,
-            IRepository<User> userRepository)
+            IRepository<User> userRepository,
+            ILogger<DeviceController> logger)
         {
             _deviceRepository = deviceRepository;
             _categoryRepository = categoryRepository;
             _userRepository = userRepository;
+            _logger = logger;
         }
 
         // GET: Device
@@ -70,17 +75,26 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         // GET: Device/Create
         public async Task<IActionResult> Create()
         {
-            var categories = await _categoryRepository.GetAllAsync();
-            var users = await _userRepository.GetAllAsync();
-
-            var viewModel = new DeviceViewModel
+            try
             {
-                Categories = categories,
-                Users = users,
-                DateOfEntry = DateTime.Now
-            };
+                var categories = await _categoryRepository.GetAllAsync();
+                var users = await _userRepository.GetAllAsync();
 
-            return View(viewModel);
+                var viewModel = new DeviceViewModel
+                {
+                    Categories = categories,
+                    Users = users,
+                    DateOfEntry = DateTime.Now
+                };
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in GET Create action");
+                TempData["Error"] = "Error loading create form. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // POST: Device/Create
@@ -88,8 +102,27 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Create(DeviceViewModel viewModel)
         {
-            if (ModelState.IsValid)
+            try
             {
+                _logger.LogInformation("Attempting to create device: {DeviceName}", viewModel.Name);
+
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("Invalid model state for device creation");
+                    // Remove validation errors for NotMapped properties
+                    ModelState.Remove("CategoryName");
+                    ModelState.Remove("UserName");
+                    ModelState.Remove("Categories");
+                    ModelState.Remove("Users");
+
+                    if (!ModelState.IsValid)
+                    {
+                        viewModel.Categories = await _categoryRepository.GetAllAsync();
+                        viewModel.Users = await _userRepository.GetAllAsync();
+                        return View(viewModel);
+                    }
+                }
+
                 var device = new Device
                 {
                     Name = viewModel.Name,
@@ -102,37 +135,61 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
 
                 await _deviceRepository.AddAsync(device);
                 await _deviceRepository.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully created device: {DeviceName} with ID: {DeviceId}", device.Name, device.Id);
+                TempData["Success"] = "Device created successfully!";
                 return RedirectToAction(nameof(Index));
             }
-
-            viewModel.Categories = await _categoryRepository.GetAllAsync();
-            viewModel.Users = await _userRepository.GetAllAsync();
-            return View(viewModel);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating device: {DeviceName}", viewModel.Name);
+                ModelState.AddModelError("", "Error creating device. Please try again.");
+                viewModel.Categories = await _categoryRepository.GetAllAsync();
+                viewModel.Users = await _userRepository.GetAllAsync();
+                return View(viewModel);
+            }
         }
 
         // GET: Device/Edit/5
         public async Task<IActionResult> Edit(int id)
         {
-            var device = await _deviceRepository.GetByIdAsync(id);
-            if (device == null)
+            try
             {
-                return NotFound();
+                _logger.LogInformation("Loading device for edit: {DeviceId}", id);
+                var device = await _deviceRepository.GetByIdAsync(id);
+                if (device == null)
+                {
+                    _logger.LogWarning("Device not found for edit: {DeviceId}", id);
+                    TempData["Error"] = "Device not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var categories = await _categoryRepository.GetAllAsync();
+                var users = await _userRepository.GetAllAsync();
+
+                var viewModel = new DeviceViewModel
+                {
+                    Id = device.Id,
+                    Name = device.Name,
+                    Code = device.Code,
+                    DeviceCategoryId = device.DeviceCategoryId,
+                    Status = device.Status,
+                    DateOfEntry = device.DateOfEntry,
+                    UserId = device.UserId,
+                    Categories = categories,
+                    Users = users,
+                    CategoryName = device.Category?.Name,
+                    UserName = device.User?.FullName
+                };
+
+                return View(viewModel);
             }
-
-            var viewModel = new DeviceViewModel
+            catch (Exception ex)
             {
-                Id = device.Id,
-                Name = device.Name,
-                Code = device.Code,
-                DeviceCategoryId = device.DeviceCategoryId,
-                Status = device.Status,
-                DateOfEntry = device.DateOfEntry,
-                UserId = device.UserId,
-                Categories = await _categoryRepository.GetAllAsync(),
-                Users = await _userRepository.GetAllAsync()
-            };
-
-            return View(viewModel);
+                _logger.LogError(ex, "Error loading device for edit: {DeviceId}", id);
+                TempData["Error"] = "Error loading device. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // POST: Device/Edit/5
@@ -140,19 +197,43 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> Edit(int id, DeviceViewModel viewModel)
         {
-            if (id != viewModel.Id)
+            try
             {
-                return NotFound();
-            }
+                _logger.LogInformation("Attempting to update device: {DeviceId}", id);
 
-            if (ModelState.IsValid)
-            {
+                if (id != viewModel.Id)
+                {
+                    _logger.LogWarning("Invalid device ID for edit. Expected: {ExpectedId}, Actual: {ActualId}", id, viewModel.Id);
+                    TempData["Error"] = "Invalid device ID.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                if (!ModelState.IsValid)
+                {
+                    _logger.LogWarning("Invalid model state for device update");
+                    // Remove validation errors for NotMapped properties
+                    ModelState.Remove("CategoryName");
+                    ModelState.Remove("UserName");
+                    ModelState.Remove("Categories");
+                    ModelState.Remove("Users");
+
+                    if (!ModelState.IsValid)
+                    {
+                        viewModel.Categories = await _categoryRepository.GetAllAsync();
+                        viewModel.Users = await _userRepository.GetAllAsync();
+                        return View(viewModel);
+                    }
+                }
+
                 var device = await _deviceRepository.GetByIdAsync(id);
                 if (device == null)
                 {
-                    return NotFound();
+                    _logger.LogWarning("Device not found for update: {DeviceId}", id);
+                    TempData["Error"] = "Device not found.";
+                    return RedirectToAction(nameof(Index));
                 }
 
+                // Update device properties
                 device.Name = viewModel.Name;
                 device.Code = viewModel.Code;
                 device.DeviceCategoryId = viewModel.DeviceCategoryId;
@@ -162,24 +243,62 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
 
                 _deviceRepository.Update(device);
                 await _deviceRepository.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully updated device: {DeviceId}", id);
+                TempData["Success"] = "Device updated successfully!";
                 return RedirectToAction(nameof(Index));
             }
-
-            viewModel.Categories = await _categoryRepository.GetAllAsync();
-            viewModel.Users = await _userRepository.GetAllAsync();
-            return View(viewModel);
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating device: {DeviceId}", id);
+                ModelState.AddModelError("", "Error updating device. Please try again.");
+                viewModel.Categories = await _categoryRepository.GetAllAsync();
+                viewModel.Users = await _userRepository.GetAllAsync();
+                return View(viewModel);
+            }
         }
 
         // GET: Device/Delete/5
-        public async Task<IActionResult> Delete(int id)
+        public async Task<IActionResult> Delete(int? id)
         {
-            var device = await _deviceRepository.GetByIdAsync(id);
-            if (device == null)
+            try
             {
-                return NotFound();
-            }
+                if (id == null)
+                {
+                    _logger.LogWarning("Delete attempted with null ID");
+                    TempData["Error"] = "Invalid device ID.";
+                    return RedirectToAction(nameof(Index));
+                }
 
-            return View(device);
+                var device = await _deviceRepository.GetByIdAsync(id.Value);
+                if (device == null)
+                {
+                    _logger.LogWarning("Device not found for deletion: {DeviceId}", id);
+                    TempData["Error"] = "Device not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                var viewModel = new DeviceViewModel
+                {
+                    Id = device.Id,
+                    Name = device.Name,
+                    Code = device.Code,
+                    DeviceCategoryId = device.DeviceCategoryId,
+                    Status = device.Status,
+                    DateOfEntry = device.DateOfEntry,
+                    UserId = device.UserId,
+                    CategoryName = device.Category?.Name,
+                    UserName = device.User?.FullName
+                };
+
+                return View(viewModel);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading device for deletion: {DeviceId}", id);
+                TempData["Error"] = "Error loading device. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // POST: Device/Delete/5
@@ -187,15 +306,35 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var device = await _deviceRepository.GetByIdAsync(id);
-            if (device == null)
+            try
             {
-                return NotFound();
-            }
+                _logger.LogInformation("Attempting to delete device: {DeviceId}", id);
 
-            _deviceRepository.Remove(device);
-            await _deviceRepository.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+                var device = await _deviceRepository.GetByIdAsync(id);
+                if (device == null)
+                {
+                    _logger.LogWarning("Device not found for deletion: {DeviceId}", id);
+                    TempData["Error"] = "Device not found.";
+                    return RedirectToAction(nameof(Index));
+                }
+
+                // Store device info for logging
+                var deviceInfo = $"{device.Name} ({device.Code})";
+
+                // Remove the device
+                _deviceRepository.Remove(device);
+                await _deviceRepository.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully deleted device: {DeviceInfo}", deviceInfo);
+                TempData["Success"] = $"Device '{deviceInfo}' has been deleted successfully.";
+                return RedirectToAction(nameof(Index));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting device: {DeviceId}", id);
+                TempData["Error"] = "An error occurred while deleting the device. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
         }
     }
 }

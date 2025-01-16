@@ -4,71 +4,157 @@
     ViewData["Title"] = "Edit Device";
 }
 
-<div class="container">
-    <h1>Edit Device</h1>
-
-    <div class="row">
+<div class="container py-4">
+    <div class="row justify-content-center">
         <div class="col-md-8">
-            <form asp-action="Edit">
-                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
-                <input type="hidden" asp-for="Id" />
-
-                <div class="form-group">
-                    <label asp-for="Name" class="control-label"></label>
-                    <input asp-for="Name" class="form-control" />
-                    <span asp-validation-for="Name" class="text-danger"></span>
+            <div class="card">
+                <div class="card-header bg-white">
+                    <h2 class="text-center mb-0">Edit Device</h2>
                 </div>
+                <div class="card-body">
+                    <form asp-action="Edit" method="post" id="editDeviceForm">
+                        <div asp-validation-summary="All" class="text-danger"></div>
+                        <input type="hidden" asp-for="Id" />
 
-                <div class="form-group">
-                    <label asp-for="Code" class="control-label"></label>
-                    <input asp-for="Code" class="form-control" />
-                    <span asp-validation-for="Code" class="text-danger"></span>
-                </div>
+                        <div class="mb-3">
+                            <label asp-for="Name" class="form-label"></label>
+                            <input asp-for="Name" class="form-control" />
+                            <span asp-validation-for="Name" class="text-danger"></span>
+                        </div>
 
-                <div class="form-group">
-                    <label asp-for="DeviceCategoryId" class="control-label"></label>
-                    <select asp-for="DeviceCategoryId" class="form-control">
-                        @foreach (var category in Model.Categories)
-                        {
-                            <option value="@category.Id">@category.Name</option>
-                        }
-                    </select>
-                    <span asp-validation-for="DeviceCategoryId" class="text-danger"></span>
-                </div>
+                        <div class="mb-3">
+                            <label asp-for="Code" class="form-label"></label>
+                            <input asp-for="Code" class="form-control" />
+                            <span asp-validation-for="Code" class="text-danger"></span>
+                        </div>
 
-                <div class="form-group">
-                    <label asp-for="Status" class="control-label"></label>
-                    <select asp-for="Status" class="form-control" asp-items="Html.GetEnumSelectList<DeviceStatus>()"></select>
-                    <span asp-validation-for="Status" class="text-danger"></span>
-                </div>
+                        <div class="mb-3">
+                            <label asp-for="DeviceCategoryId" class="form-label"></label>
+                            <select asp-for="DeviceCategoryId" class="form-select">
+                                <option value="">Select Category</option>
+                                @foreach (var category in Model.Categories)
+                                {
+                                    <option value="@category.Id">@category.Name</option>
+                                }
+                            </select>
+                            <span asp-validation-for="DeviceCategoryId" class="text-danger"></span>
+                        </div>
 
-                <div class="form-group">
-                    <label asp-for="DateOfEntry" class="control-label"></label>
-                    <input asp-for="DateOfEntry" class="form-control" type="date" />
-                    <span asp-validation-for="DateOfEntry" class="text-danger"></span>
-                </div>
+                        <div class="mb-3">
+                            <label asp-for="Status" class="form-label"></label>
+                            <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<Lab2_NguyenCongMinh_CSE422.Models.Enums.DeviceStatus>()">
+                                <option value="">Select Status</option>
+                            </select>
+                            <span asp-validation-for="Status" class="text-danger"></span>
+                        </div>
 
-                <div class="form-group">
-                    <label asp-for="UserId" class="control-label"></label>
-                    <select asp-for="UserId" class="form-control">
-                        <option value="">Not Assigned</option>
-                        @foreach (var user in Model.Users)
-                        {
-                            <option value="@user.Id">@user.FullName</option>
-                        }
-                    </select>
-                    <span asp-validation-for="UserId" class="text-danger"></span>
-                </div>
+                        <div class="mb-3">
+                            <label asp-for="DateOfEntry" class="form-label"></label>
+                            <input asp-for="DateOfEntry" class="form-control" type="date" value="@Model.DateOfEntry.ToString("yyyy-MM-dd")" />
+                            <span asp-validation-for="DateOfEntry" class="text-danger"></span>
+                        </div>
 
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+                        <div class="mb-3">
+                            <label asp-for="UserId" class="form-label"></label>
+                            <select asp-for="UserId" class="form-select">
+                                <option value="">Not Assigned</option>
+                                @foreach (var user in Model.Users)
+                                {
+                                    <option value="@user.Id">@user.FullName</option>
+                                }
+                            </select>
+                            <span asp-validation-for="UserId" class="text-danger"></span>
+                        </div>
+
+                        <div class="text-center mt-4">
+                            <button type="submit" class="btn btn-primary" id="submitButton">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                            <a asp-action="Index" class="btn btn-secondary ms-2">
+                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                            </a>
+                        </div>
+                    </form>
                 </div>
-            </form>
+            </div>
         </div>
     </div>
 </div>
 
 @section Scripts {
     @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        $(document).ready(function () {
+            // Enable jQuery validation
+            $.validator.setDefaults({
+                ignore: [],
+                errorElement: 'span',
+                errorClass: 'text-danger'
+            });
+
+            // Handle form submission
+            $('#editDeviceForm').on('submit', function (e) {
+                if ($(this).valid()) {
+                    $('#submitButton').prop('disabled', true).html('<i class="fas fa-spinner fa-spin me-2"></i>Saving...');
+                    return true;
+                }
+                e.preventDefault();
+                return false;
+            });
+
+            // Initialize form validation
+            $("#editDeviceForm").validate({
+                rules: {
+                    Name: {
+                        required: true,
+                        minlength: 2,
+                        maxlength: 100
+                    },
+                    Code: {
+                        required: true,
+                        maxlength: 50,
+                        pattern: /^[A-Za-z0-9-_]+$/
+                    },
+                    DeviceCategoryId: {
+                        required: true
+                    },
+                    Status: {
+                        required: true
+                    },
+                    DateOfEntry: {
+                        required: true,
+                        date: true
+                    }
+                },
+                messages: {
+                    Name: {
+                        required: "Device name is required",
+                        minlength: "Name must be at least 2 characters",
+                        maxlength: "Name cannot exceed 100 characters"
+                    },
+                    Code: {
+                        required: "Device code is required",
+                        maxlength: "Code cannot exceed 50 characters",
+                        pattern: "Code can only contain letters, numbers, hyphens, and underscores"
+                    },
+                    DeviceCategoryId: {
+                        required: "Please select a category"
+                    },
+                    Status: {
+                        required: "Please select a status"
+                    },
+                    DateOfEntry: {
+                        required: "Date of entry is required",
+                        date: "Please enter a valid date"
+                    }
+                },
+                highlight: function (element) {
+                    $(element).addClass('is-invalid');
+                },
+                unhighlight: function (element) {
+                    $(element).removeClass('is-invalid');
+                }
+            });
+        });
+    </script>
 }

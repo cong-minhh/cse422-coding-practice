@@ -4,18 +4,26 @@
     var devices = (IEnumerable<Device>)ViewBag.Devices;
 }
 
-<div class="container">
-    <h1>Device Management</h1>
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0">Device Management</h1>
+        <a asp-action="Create" class="btn btn-success">
+            <i class="fas fa-plus me-2"></i>Create New Device
+        </a>
+    </div>
 
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <form asp-action="Index" method="get" class="form-inline">
-                <div class="input-group mb-2 mr-sm-2">
-                    <input asp-for="SearchTerm" class="form-control" placeholder="Search by name or code..."/>
+    <div class="card mb-4">
+        <div class="card-body">
+            <form asp-action="Index" method="get" class="row g-3">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input asp-for="SearchTerm" class="form-control" placeholder="Search by name or code..."/>
+                    </div>
                 </div>
 
-                <div class="input-group mb-2 mr-sm-2">
-                    <select asp-for="CategoryId" class="form-control">
+                <div class="col-md-3">
+                    <select asp-for="CategoryId" class="form-select">
                         <option value="">All Categories</option>
                         @foreach (var category in Model.Categories)
                         {
@@ -24,8 +32,8 @@
                     </select>
                 </div>
 
-                <div class="input-group mb-2 mr-sm-2">
-                    <select asp-for="Status" class="form-control">
+                <div class="col-md-3">
+                    <select asp-for="Status" class="form-select">
                         <option value="">All Statuses</option>
                         @foreach (var status in Enum.GetValues(typeof(DeviceStatus)))
                         {
@@ -34,53 +42,76 @@
                     </select>
                 </div>
 
-                <button type="submit" class="btn btn-primary mb-2">Filter</button>
-                <a asp-action="Create" class="btn btn-success mb-2 ml-2">Create New</a>
+                <div class="col-md-2">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-filter me-2"></i>Filter
+                    </button>
+                </div>
             </form>
         </div>
     </div>
 
-    <div class="table-responsive">
-        <table class="table table-striped">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Code</th>
-                    <th>Category</th>
-                    <th>Status</th>
-                    <th>Date of Entry</th>
-                    <th>Assigned User</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach (var device in devices)
-                {
-                    <tr>
-                        <td>@device.Name</td>
-                        <td>@device.Code</td>
-                        <td>@device.Category?.Name</td>
-                        <td>@device.Status</td>
-                        <td>@device.DateOfEntry.ToShortDateString()</td>
-                        <td>@(device.User?.FullName ?? "Not Assigned")</td>
-                        <td>
-                            <div class="btn-group">
-                                <a asp-action="Edit" asp-route-id="@device.Id" class="btn btn-sm btn-primary">Edit</a>
-                                <a asp-action="Details" asp-route-id="@device.Id" class="btn btn-sm btn-info">Details</a>
-                                <a asp-action="Delete" asp-route-id="@device.Id" class="btn btn-sm btn-danger">Delete</a>
-                            </div>
-                        </td>
-                    </tr>
-                }
-            </tbody>
-        </table>
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Category</th>
+                            <th>Status</th>
+                            <th>Date of Entry</th>
+                            <th>Assigned User</th>
+                            <th class="text-center">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var device in devices)
+                        {
+                            <tr>
+                                <td>@device.Name</td>
+                                <td>@device.Code</td>
+                                <td>@device.Category?.Name</td>
+                                <td>
+                                    <span class="badge bg-@(device.Status == DeviceStatus.InUse ? "success" : device.Status == DeviceStatus.InUse ? "primary" : "warning")">
+                                        @device.Status
+                                    </span>
+                                </td>
+                                <td>@device.DateOfEntry.ToShortDateString()</td>
+                                <td>@(device.User?.FullName ?? "Not Assigned")</td>
+                                <td>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <a href="@Url.Action("Edit", new { id = device.Id })" class="btn btn-sm btn-primary">
+                                            <i class="fas fa-edit me-1"></i>Edit
+                                        </a>
+                                        <a href="@Url.Action("Details", new { id = device.Id })" class="btn btn-sm btn-info">
+                                            <i class="fas fa-info-circle me-1"></i>Details
+                                        </a>
+                                        <a href="@Url.Action("Delete", new { id = device.Id })" class="btn btn-sm btn-danger">
+                                            <i class="fas fa-trash me-1"></i>Delete
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
 
 @section Scripts {
     <script>
         $(document).ready(function () {
-            // Add any client-side functionality here
+            // Handle button clicks
+            $('.btn-primary, .btn-info, .btn-danger').click(function(e) {
+                var href = $(this).attr('href');
+                if (href) {
+                    window.location.href = href;
+                }
+            });
         });
     </script>
 }

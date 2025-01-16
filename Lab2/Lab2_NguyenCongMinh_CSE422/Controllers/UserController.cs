@@ -3,6 +3,8 @@ using Lab2_NguyenCongMinh_CSE422.Models;
 using Lab2_NguyenCongMinh_CSE422.Models.Interfaces;
 using Lab2_NguyenCongMinh_CSE422.Models.ViewModels;
 using System.Linq.Expressions;
+using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 
 namespace Lab2_NguyenCongMinh_CSE422.Controllers
 {
@@ -10,11 +12,19 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
     {
         private readonly IRepository<User> _userRepository;
         private readonly IDeviceRepository _deviceRepository;
+        private readonly ILogger<UserController> _logger;
+        private readonly DeviceManagementContext _context;
 
-        public UserController(IRepository<User> userRepository, IDeviceRepository deviceRepository)
+        public UserController(
+            IRepository<User> userRepository, 
+            IDeviceRepository deviceRepository,
+            ILogger<UserController> logger,
+            DeviceManagementContext context)
         {
             _userRepository = userRepository;
             _deviceRepository = deviceRepository;
+            _logger = logger;
+            _context = context;
         }
 
         // GET: User
@@ -78,6 +88,7 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error creating user: {Email}", user.Email);
                     ModelState.AddModelError("", "An error occurred while creating the user. Please try again.");
                 }
             }
@@ -129,6 +140,7 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
                 }
                 catch (Exception ex)
                 {
+                    _logger.LogError(ex, "Error updating user: {UserId}", id);
                     if (!await UserExists(id))
                     {
                         return NotFound();
@@ -147,16 +159,34 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         {
             if (id == null)
             {
-                return NotFound();
+                _logger.LogWarning("Delete attempted with null ID");
+                TempData["Error"] = "Invalid user ID.";
+                return RedirectToAction(nameof(Index));
             }
 
-            var user = await _userRepository.GetByIdAsync(id.Value);
-            if (user == null)
+            try
             {
-                return NotFound();
-            }
+                var user = await _userRepository.GetByIdAsync(id.Value);
+                if (user == null)
+                {
+                    _logger.LogWarning("User not found for deletion: {UserId}", id);
+                    TempData["Error"] = "User not found.";
+                    return RedirectToAction(nameof(Index));
+                }
 
-            return View(user);
+                // Get assigned devices for the confirmation view
+                var assignedDevices = await _deviceRepository.GetDevicesByUserAsync(id.Value);
+                ViewBag.HasAssignedDevices = assignedDevices.Any();
+                ViewBag.AssignedDevices = assignedDevices;
+
+                return View(user);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error loading user for deletion: {UserId}", id);
+                TempData["Error"] = "Error loading user. Please try again.";
+                return RedirectToAction(nameof(Index));
+            }
         }
 
         // POST: User/Delete/5
@@ -164,21 +194,57 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> DeleteConfirmed(int id)
         {
-            var user = await _userRepository.GetByIdAsync(id);
-            if (user != null)
+            using (var transaction = await _context.Database.BeginTransactionAsync())
             {
                 try
                 {
-                    _userRepository.Remove(user);
-                    await _userRepository.SaveChangesAsync();
-                    TempData["Success"] = "User deleted successfully";
+                    var user = await _context.Users
+                        .Include(u => u.Devices)
+                        .Include(u => u.UserRoles)
+                        .FirstOrDefaultAsync(u => u.Id == id);
+
+                    if (user == null)
+                    {
+                        _logger.LogWarning("User not found for deletion: {UserId}", id);
+                        TempData["Error"] = "User not found.";
+                        return RedirectToAction(nameof(Index));
+                    }
+
+                    // Store user info for logging
+                    var userInfo = $"{user.FullName} ({user.Email})";
+
+                    // Remove UserRole relationships
+                    if (user.UserRoles != null && user.UserRoles.Any())
+                    {
+                        _context.UserRoles.RemoveRange(user.UserRoles);
+                    }
+
+                    // Unassign all devices from this user
+                    foreach (var device in user.Devices.ToList())
+                    {
+                        device.UserId = null;
+                        _context.Devices.Update(device);
+                    }
+
+                    // Remove the user
+                    _context.Users.Remove(user);
+                    await _context.SaveChangesAsync();
+
+                    // Commit transaction
+                    await transaction.CommitAsync();
+
+                    _logger.LogInformation("Successfully deleted user: {UserInfo}", userInfo);
+                    TempData["Success"] = $"User '{userInfo}' has been deleted successfully.";
+                    return RedirectToAction(nameof(Index));
                 }
                 catch (Exception ex)
                 {
+                    await transaction.RollbackAsync();
+                    _logger.LogError(ex, "Error deleting user: {UserId}", id);
                     TempData["Error"] = "An error occurred while deleting the user. Please try again.";
+                    return RedirectToAction(nameof(Index));
                 }
             }
-            return RedirectToAction(nameof(Index));
         }
 
         private async Task<bool> UserExists(int id)
