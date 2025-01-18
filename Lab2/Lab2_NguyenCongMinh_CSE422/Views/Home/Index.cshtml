@@ -84,49 +84,6 @@
         </div>
     </div>
 
-    <!-- Recent Devices -->
-    <div class="row">
-        <div class="col-md-12">
-            <div class="card">
-                <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                    <h5 class="card-title mb-0">Recent Devices</h5>
-                    <a href="@Url.Action("Index", "Device")" class="btn btn-primary btn-sm">View All</a>
-                </div>
-                <div class="card-body">
-                    <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Code</th>
-                                    <th>Category</th>
-                                    <th>Status</th>
-                                    <th>Date Added</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach (var device in Model.RecentDevices)
-                                {
-                                    <tr>
-                                        <td>@device.Name</td>
-                                        <td>@device.Code</td>
-                                        <td>@device.Category?.Name</td>
-                                        <td>
-                                            <span class="badge @(device.Status == DeviceStatus.InUse ? "bg-success" : 
-                                                               device.Status == DeviceStatus.Broken ? "bg-danger" : "bg-warning")">
-                                                @device.Status
-                                            </span>
-                                        </td>
-                                        <td>@device.DateOfEntry.ToShortDateString()</td>
-                                    </tr>
-                                }
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 </div>
 
 @section Scripts {

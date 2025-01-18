@@ -34,12 +34,21 @@ builder.Services.AddScoped<IRepository<Role>, BaseRepository<Role>>();
 
 var app = builder.Build();
 
-// Seed the database
+// Ensure database is created and seeded
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
-    var context = services.GetRequiredService<DeviceManagementContext>();
-    DbSeeder.Seed(context);
+    try
+    {
+        var context = services.GetRequiredService<DeviceManagementContext>();
+        // Always run the seeder
+        DbSeeder.Seed(context);
+    }
+    catch (Exception ex)
+    {
+        var logger = services.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while seeding the database.");
+    }
 }
 
 // Configure the HTTP request pipeline.

@@ -33,19 +33,23 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
             var devices = await _deviceRepository.GetAllAsync();
             var categories = await _categoryRepository.GetAllAsync();
 
+            // Apply all filters to the same query
             if (!string.IsNullOrWhiteSpace(filter.SearchTerm))
             {
-                devices = await _deviceRepository.SearchDevicesAsync(filter.SearchTerm);
+                var searchTerm = filter.SearchTerm.ToLower();
+                devices = devices.Where(d => 
+                    d.Name.ToLower().Contains(searchTerm) || 
+                    d.Code.ToLower().Contains(searchTerm));
             }
 
             if (filter.CategoryId.HasValue)
             {
-                devices = await _deviceRepository.GetDevicesByCategoryAsync(filter.CategoryId.Value);
+                devices = devices.Where(d => d.DeviceCategoryId == filter.CategoryId.Value);
             }
 
             if (filter.Status.HasValue)
             {
-                devices = await _deviceRepository.GetDevicesByStatusAsync(filter.Status.Value);
+                devices = devices.Where(d => d.Status == filter.Status.Value);
             }
 
             var viewModel = new DeviceFilterViewModel
@@ -189,7 +193,7 @@ namespace Lab2_NguyenCongMinh_CSE422.Controllers
                 _logger.LogError(ex, "Error loading device for edit: {DeviceId}", id);
                 TempData["Error"] = "Error loading device. Please try again.";
                 return RedirectToAction(nameof(Index));
-            }
+            }   
         }
 
         // POST: Device/Edit/5
